@@ -10,7 +10,7 @@ from pymunk.vec2d import Vec2d
 import shapely.geometry as sg
 import cv2
 import skimage.transform as st
-from diffusion_policy.env.pusht.pymunk_override import DrawOptions
+from diffusion_policy.environment.pymunk_override import DrawOptions
 
 
 def pymunk_to_shapely(body, shapes):

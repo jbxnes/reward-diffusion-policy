@@ -1,3 +1,5 @@
+# Usage: python train.py --dataset_path ./data/pusht/pusht_cchi_v7_replay.zarr --seed 42 --save_model 
+
 from tqdm import tqdm
 import torch
 import torch.nn as nn 
@@ -9,9 +11,6 @@ from diffusers.optimization import get_scheduler
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusion_policy.model.diffusion.conditional_unet1d import ConditionalUnet1D
 from diffusion_policy.dataset.pusht_dataset import PushTDataset
-
-import wandb
-wandb.init(project="reward_diffusion_policy") 
 
 # seed 
 # dataset_path
@@ -28,8 +27,10 @@ def train(dataset_path, seed, save_model):
     action_horizon = 8
     obs_dim = 20
     action_dim = 2
-    num_diffusion_iters = 100
+    
     num_epochs = 100
+    num_diffusion_iters = 100
+    
     device = torch.device('cuda')
     
     # get dataset
@@ -52,6 +53,7 @@ def train(dataset_path, seed, save_model):
     # get model 
     noise_pred_net = ConditionalUnet1D(input_dim=action_dim, 
                                        global_cond_dim=obs_dim * obs_horizon)
+    noise_pred_net.to(device)
     
     # get noise scheduler 
     noise_scheduler = DDPMScheduler(
@@ -60,8 +62,7 @@ def train(dataset_path, seed, save_model):
         clip_sample=True,
         prediction_type='epsilon'
     )
-    noise_pred_net.to(device)
-
+    
     # get optimizer
     optimizer = torch.optim.AdamW(
         params=noise_pred_net.parameters(),
@@ -141,6 +142,13 @@ if __name__ == "__main__":
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--save_model', action='store_true')
     parsed_args = parser.parse_args()
+    
+    import wandb
+    from datetime import datetime
+    run_name = f"run_seed{parsed_args.seed}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    wandb.init(project="diffusion_policy_pretraining", name=run_name, config=vars(parsed_args)) 
+    
+    print(f"RUNNING: {run_name}")
     
     # experiment inputs
     train(dataset_path=parsed_args.dataset_path,
