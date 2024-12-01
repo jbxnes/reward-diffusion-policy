@@ -1,0 +1,14 @@
+# pycache files 
+**/__pycache__
+
+# slurm scripts 
+*.slrm
+
+# logs
+*.err
+*.out
+wandb/
+
+# other 
+data/
+blah.py

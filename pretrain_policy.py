@@ -1,10 +1,9 @@
-# Usage: python train.py --dataset_path ./data/pusht/pusht_cchi_v7_replay.zarr --seed 42 --save_model 
+# Usage: python pretrain_policy.py --dataset_path ./data/pusht/pusht_cchi_v7_replay.zarr --seed 42 --save_model
 
 from tqdm import tqdm
 import torch
 import torch.nn as nn 
 import numpy as np 
-import random 
 import argparse
 
 from diffusers.optimization import get_scheduler
@@ -12,14 +11,10 @@ from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusion_policy.model.diffusion.conditional_unet1d import ConditionalUnet1D
 from diffusion_policy.dataset.pusht_dataset import PushTDataset
 
-# seed 
-# dataset_path
-
-def train(dataset_path, seed, save_model):
+def train(dataset_path, seed):
     # set seeds
     torch.manual_seed(seed)
     np.random.seed(seed)
-    random.seed(seed) 
     
     # define variables 
     pred_horizon = 16
@@ -80,7 +75,8 @@ def train(dataset_path, seed, save_model):
     with tqdm(range(num_epochs), desc='Epoch') as tglobal:
         # epoch loop
         for epoch_idx in tglobal:
-            epoch_loss = list()
+            epoch_loss = 0
+            n_samples = 0
             # batch loop
             with tqdm(dataloader, desc='Batch', leave=False) as tepoch:
                 for nbatch in tepoch:
@@ -112,7 +108,7 @@ def train(dataset_path, seed, save_model):
                         noisy_actions, timesteps, global_cond=obs_cond)
 
                     # L2 loss
-                    loss = nn.functional.mse_loss(noise_pred, noise)
+                    loss = nn.functional.mse_loss(noise_pred, noise, reduction='sum')
 
                     # optimize
                     loss.backward()
@@ -122,11 +118,12 @@ def train(dataset_path, seed, save_model):
 
                     # logging
                     loss_cpu = loss.item()
-                    epoch_loss.append(loss_cpu)
-                    tepoch.set_postfix(loss=loss_cpu)
+                    epoch_loss += loss_cpu
+                    n_samples += B 
+                    tepoch.set_postfix(loss=loss_cpu / B)
             
             # log results 
-            epoch_avg_loss = np.mean(epoch_loss)
+            epoch_avg_loss = epoch_loss / n_samples
             wandb.log({'epoch_loss': epoch_avg_loss})
             tglobal.set_postfix(loss=epoch_avg_loss)
 
@@ -140,18 +137,12 @@ if __name__ == "__main__":
     
     parser.add_argument('--dataset_path', default='./data/pusht/pusht_cchi_v7_replay.zarr', type=str)
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--save_model', action='store_true')
     parsed_args = parser.parse_args()
     
     import wandb
-    from datetime import datetime
-    run_name = f"run_seed{parsed_args.seed}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    wandb.init(project="diffusion_policy_pretraining", name=run_name, config=vars(parsed_args)) 
-    
-    print(f"RUNNING: {run_name}")
+    wandb.init(project="diffusion_policy_pretraining", config=vars(parsed_args)) 
     
     # experiment inputs
     train(dataset_path=parsed_args.dataset_path,
-          seed=parsed_args.seed,
-          save_model=parsed_args.save_model)
+          seed=parsed_args.seed)
     

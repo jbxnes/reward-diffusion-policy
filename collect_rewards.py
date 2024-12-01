@@ -1,4 +1,4 @@
-# Usage: python collect_reward_data.py --n_inits 300 --model_path ./data/checkpoints/pusht_state_policy_ep100_pretrained42.ckpt --seed 42
+# Usage: python collect_rewards.py --n_inits 1000 --model_path ./data/checkpoints/pusht_state_policy_ep100_pretrained42.ckpt --seed 42
 
 import torch
 import random
@@ -18,7 +18,6 @@ def collect_rewards(n_inits, model_path, seed):
     # set seeds
     torch.manual_seed(seed)
     np.random.seed(seed)
-    random.seed(seed) 
     
     # define variables
     pred_horizon = 16
@@ -61,10 +60,11 @@ def collect_rewards(n_inits, model_path, seed):
     env = PushTEnv(kp_obs=True)
     
     # define data arrays that we will populate 
-    state_action_data = np.zeros(((max_steps // action_horizon) * n_inits, obs_dim + action_dim * action_horizon), dtype=np.float32) # (38 * n_inits, 36)
-    reward_data = np.zeros((max_steps * n_inits, 2), dtype=np.float32) # (38 * n_inits, 2)
+    obs_action_data = np.zeros(((max_steps // action_horizon) * n_inits, obs_dim + action_dim * action_horizon), dtype=np.float32) # (38 * n_inits, 36)
+    reward_data = np.zeros(((max_steps // action_horizon) * n_inits, 2), dtype=np.float32) # (38 * n_inits, 2)
 
     # collect data by doing n_init episodes
+    n_policy_evals = 0
     for i in range(n_inits):
         
         # initalize environment 
@@ -77,10 +77,9 @@ def collect_rewards(n_inits, model_path, seed):
         
         done = False
         step_idx = 0
-        n_policy_evals = 0
 
         with tqdm(total=max_steps, desc=f"Collecting Rewards for Init {i}") as pbar:
-            while not done:
+            while step_idx < max_steps:
                 B = 1
                 # stack the last obs_horizon (2) number of observations
                 obs_seq = np.stack(obs_deque) # (2, 20)
@@ -127,17 +126,15 @@ def collect_rewards(n_inits, model_path, seed):
                 action = action_pred[start:end,:] # (action_horizon, action_dim)
 
                 # collect reward data inputs 
-                state_action_data[n_policy_evals, :20] = obs_seq[-1]
-                state_action_data[n_policy_evals, 20:] = np.array(action).flatten()
+                obs_action_data[n_policy_evals, :20] = obs_seq[-1]
+                obs_action_data[n_policy_evals, 20:] = np.array(action).flatten()
 
                 # execute action_horizon number of steps
                 # without replanning
                 dense_reward0 = env.dense_reward()
-                dense_rewardT = 0
                 for j in range(len(action)):
                     # stepping env
                     obs, reward, dense_reward, done, _, info = env.step(action[j])
-                    dense_rewardT = dense_reward
 
                     # save observations
                     obs_deque.append(obs)
@@ -147,19 +144,21 @@ def collect_rewards(n_inits, model_path, seed):
                     pbar.update(1)
                     pbar.set_postfix(reward=reward)
                     if step_idx > max_steps:
-                        done = True
-                    if done:
                         break
                     
                 # collect reward data labels 
+                dense_rewardT = env.dense_reward()
                 reward_data[n_policy_evals, 0] = dense_rewardT
                 reward_data[n_policy_evals, 1] = dense_rewardT - dense_reward0
                 n_policy_evals += 1
-                
-        wandb.log({'progress': i / n_inits})
+            
+        # logging 
+        wandb.log({'inits_progress': i / n_inits})
+        wandb.log({'n_policy_evals': n_policy_evals})
+        wandb.log({'step_idx': n_policy_evals})
 
-    np.save('./data/reward/state_action_data.npy', state_action_data)
-    np.save('./data/reward/reward_data.npy', reward_data) 
+    np.save(f'./data/reward/obs_action_data_{n_inits}inits.npy', obs_action_data)
+    np.save(f'./data/reward/reward_data_{n_inits}inits.npy', reward_data) 
 
 
 if __name__ == "__main__":
@@ -171,13 +170,9 @@ if __name__ == "__main__":
     parsed_args = parser.parse_args()
     
     import wandb
-    from datetime import datetime
-    run_name = f"run_seed{parsed_args.seed}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    wandb.init(project="reward_data_collection", name=run_name, config=vars(parsed_args)) 
-    
-    print(f"RUNNING: {run_name}")
+    wandb.init(project="reward_data_collection", config=vars(parsed_args))
     
     # experiment inputs
     collect_rewards(n_inits=parsed_args.n_inits,
-                    model_path=parsed_args.model_path,
+                    model_path=parsed_args.model_path, 
                     seed=parsed_args.seed)
