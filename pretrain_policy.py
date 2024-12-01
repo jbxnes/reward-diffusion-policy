@@ -128,7 +128,7 @@ def train(dataset_path, seed):
             tglobal.set_postfix(loss=epoch_avg_loss)
 
     if save_model:
-        torch.save(noise_pred_net.state_dict(), f'./data/checkpoints/pusht_state_policy_ep100_pretrained{seed}.ckpt')
+        torch.save(noise_pred_net.state_dict(), f'./data/checkpoints/policy_kps_pretrained_seed{seed}.ckpt')
         print('Model saved.')
         
         

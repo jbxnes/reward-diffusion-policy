@@ -1,4 +1,4 @@
-# Usage: python collect_rewards.py --n_inits 300 --model_path ./data/checkpoints/pusht_state_policy_ep100_pretrained42.ckpt --seed 42
+# Usage: python collect_rewards.py --n_inits 300 --model_path ./data/checkpoints/policy_kps_pretrained_seed42.ckpt --seed 42
 
 import torch
 import random
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--n_inits', default=300, type=int)
-    parser.add_argument('--model_path', default='./data/checkpoints/pusht_state_policy_ep100_pretrained42.ckpt', type=str)
+    parser.add_argument('--model_path', default='./data/checkpoints/policy_kps_pretrained_seed42.ckpt', type=str)
     parser.add_argument('--seed', default=42, type=int)
     parsed_args = parser.parse_args()
     

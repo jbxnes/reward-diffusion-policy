@@ -139,10 +139,6 @@ class ConditionalUnet1D(nn.Module):
         self.down_modules = down_modules
         self.final_conv = final_conv
 
-        print("number of parameters: {:e}".format(
-            sum(p.numel() for p in self.parameters()))
-        )
-
     def forward(self,
             sample: torch.Tensor,
             timestep: Union[torch.Tensor, float, int],

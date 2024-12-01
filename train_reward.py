@@ -123,7 +123,7 @@ def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed):
                        'reward_difference': int(reward_diff)})
             
     # save model 
-    torch.save(reward_model.state_dict(), f'./data/checkpoints/reward_model_rd{int(reward_diff)}_seed{seed}.ckpt')
+    torch.save(reward_model.state_dict(), f'./data/checkpoints/reward_model_kps_rd{int(reward_diff)}_seed{seed}.ckpt')
             
             
 if __name__ == "__main__":
