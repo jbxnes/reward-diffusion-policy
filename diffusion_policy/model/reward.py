@@ -5,7 +5,7 @@ class RewardModel(nn.Module):
     def __init__(self, reward_diff=True):
         super().__init__()
 
-        self.net = nn.Sequential(nn.Linear(36, 16),
+        self.net = nn.Sequential(nn.Linear(52, 16),
                                  nn.SiLU(),
                                  nn.Linear(16, 16),
                                  nn.SiLU(),

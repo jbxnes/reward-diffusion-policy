@@ -1,4 +1,4 @@
-# Usage: python collect_rewards.py --n_inits 1000 --model_path ./data/checkpoints/pusht_state_policy_ep100_pretrained42.ckpt --seed 42
+# Usage: python collect_rewards.py --n_inits 300 --model_path ./data/checkpoints/pusht_state_policy_ep100_pretrained42.ckpt --seed 42
 
 import torch
 import random
@@ -59,9 +59,10 @@ def collect_rewards(n_inits, model_path, seed):
     # get environment
     env = PushTEnv(kp_obs=True)
     
-    # define data arrays that we will populate 
-    obs_action_data = np.zeros(((max_steps // action_horizon) * n_inits, obs_dim + action_dim * action_horizon), dtype=np.float32) # (38 * n_inits, 36)
-    reward_data = np.zeros(((max_steps // action_horizon) * n_inits, 2), dtype=np.float32) # (38 * n_inits, 2)
+    # define data array that we will populate
+    action_reward_data = np.zeros(((max_steps // action_horizon) * n_inits, 
+                                   obs_dim + pred_horizon * action_dim + 2), 
+                                  dtype=np.float32) # (38 * n_inits, 54)
 
     # collect data by doing n_init episodes
     n_policy_evals = 0
@@ -75,7 +76,6 @@ def collect_rewards(n_inits, model_path, seed):
         obs_deque = collections.deque(
             [obs] * obs_horizon, maxlen=obs_horizon)
         
-        done = False
         step_idx = 0
 
         with tqdm(total=max_steps, desc=f"Collecting Rewards for Init {i}") as pbar:
@@ -115,19 +115,18 @@ def collect_rewards(n_inits, model_path, seed):
                         ).prev_sample
 
                 # unnormalize action
-                naction = naction.detach().to('cpu').numpy()
-                # (B, pred_horizon, action_dim)
+                naction = naction.detach().to('cpu').numpy() # (B, pred_horizon, action_dim)
                 naction = naction[0]
-                action_pred = unnormalize_data(naction, stats=stats['action']) # list of shape (16, 2)
+                action_pred = unnormalize_data(naction, stats=stats['action']) # (pred_horizon, action_dim)
 
                 # only take action_horizon number of actions
                 start = obs_horizon - 1
                 end = start + action_horizon
                 action = action_pred[start:end,:] # (action_horizon, action_dim)
 
-                # collect reward data inputs 
-                obs_action_data[n_policy_evals, :20] = obs_seq[-1]
-                obs_action_data[n_policy_evals, 20:] = np.array(action).flatten()
+                # collect action data 
+                action_reward_data[n_policy_evals, :obs_dim] = obs_seq[-1]
+                action_reward_data[n_policy_evals, obs_dim:-2] = np.array(action_pred).flatten()
 
                 # execute action_horizon number of steps
                 # without replanning
@@ -148,8 +147,8 @@ def collect_rewards(n_inits, model_path, seed):
                     
                 # collect reward data labels 
                 dense_rewardT = env.dense_reward()
-                reward_data[n_policy_evals, 0] = dense_rewardT
-                reward_data[n_policy_evals, 1] = dense_rewardT - dense_reward0
+                action_reward_data[n_policy_evals, -2] = dense_rewardT
+                action_reward_data[n_policy_evals, -1] = dense_rewardT - dense_reward0
                 n_policy_evals += 1
             
         # logging 
@@ -157,14 +156,13 @@ def collect_rewards(n_inits, model_path, seed):
         wandb.log({'n_policy_evals': n_policy_evals})
         wandb.log({'step_idx': n_policy_evals})
 
-    np.save(f'./data/reward/obs_action_data_{n_inits}inits.npy', obs_action_data)
-    np.save(f'./data/reward/reward_data_{n_inits}inits.npy', reward_data) 
+    np.save(f'./data/reward/action_reward_data_{n_inits}inits.npy', action_reward_data)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--n_inits', default=1000, type=int)
+    parser.add_argument('--n_inits', default=300, type=int)
     parser.add_argument('--model_path', default='./data/checkpoints/pusht_state_policy_ep100_pretrained42.ckpt', type=str)
     parser.add_argument('--seed', default=42, type=int)
     parsed_args = parser.parse_args()

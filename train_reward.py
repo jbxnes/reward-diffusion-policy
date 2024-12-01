@@ -1,4 +1,4 @@
-# Usage: python train_reward.py --num_epochs 100 --lr 1e-4 --batch_size 256 --reward_diff --obs_actions_path ./data/reward/obs_action_data_300inits.npy --rewards_path ./data/reward/reward_data_300inits.npy --seed 42
+# Usage: python train_reward.py --num_epochs 100 --lr 1e-2 --batch_size 256 --reward_diff --action_reward_path ./data/reward/action_reward_data_300inits.npy --seed 42
 import torch
 import torch.nn as nn
 import numpy as np 
@@ -10,7 +10,7 @@ from diffusion_policy.dataset.reward_dataset import RewardDataset
 from diffusion_policy.model.reward import RewardModel
 
 
-def train(num_epochs, lr, batch_size, reward_diff, obs_actions_path, rewards_path, seed):
+def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed):
     # set seeds
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -19,8 +19,7 @@ def train(num_epochs, lr, batch_size, reward_diff, obs_actions_path, rewards_pat
     
     # load data
     train_dataset = RewardDataset(
-        obs_actions_path=obs_actions_path, 
-        rewards_path=rewards_path, 
+        action_reward_path=action_reward_path,
         train=True,
         reward_diff=reward_diff)
     
@@ -33,8 +32,7 @@ def train(num_epochs, lr, batch_size, reward_diff, obs_actions_path, rewards_pat
         persistent_workers=True)
     
     test_dataset = RewardDataset(
-        obs_actions_path=obs_actions_path, 
-        rewards_path=rewards_path, 
+        action_reward_path=action_reward_path,
         train=False,
         reward_diff=reward_diff)
     
@@ -132,11 +130,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--num_epochs', default=100, type=int)
-    parser.add_argument('--lr', default=1e-22, type=float)
+    parser.add_argument('--lr', default=1e-2, type=float)
     parser.add_argument('--batch_size', default=256, type=int)
     parser.add_argument('--reward_diff', action='store_true')
-    parser.add_argument('--obs_actions_path', default='./data/reward/obs_action_data_300inits.npy', type=str)
-    parser.add_argument('--rewards_path', default='./data/reward/reward_data_300inits.npy', type=str)
+    parser.add_argument('--action_reward_path', default='./data/reward/action_reward_data_300inits.npy', type=str)
     parser.add_argument('--seed', default=42, type=int)
     parsed_args = parser.parse_args()
     
@@ -147,6 +144,5 @@ if __name__ == "__main__":
           lr=parsed_args.lr,
           batch_size=parsed_args.batch_size,
           reward_diff=parsed_args.reward_diff,
-          obs_actions_path=parsed_args.obs_actions_path,
-          rewards_path=parsed_args.rewards_path,
+          action_reward_path=parsed_args.action_reward_path,
           seed=parsed_args.seed)
