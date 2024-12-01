@@ -62,35 +62,35 @@ def adjoint_matching_loss(trajectories, lean_adjoint_trajectories,
     return loss
         
 
-# def remove_noise(noise_pred, timestep, sample, alphas):
-#     # alphas go from small to large here 
-#     t = timestep 
-#     prev_t = t - 1
+def remove_noise(noise_pred, timestep, sample, alphas):
+    # alphas go from small to large here 
+    t = timestep 
+    prev_t = t - 1
     
-#     # compute alphas, betas
-#     alpha_cumprod = torch.cumprod(alphas, dim=0)
-#     alpha_prod_t = alpha_cumprod[t]
-#     alpha_prod_t_prev = alpha_cumprod[prev_t] if prev_t >= 0 else torch.tensor(1.0)
-#     beta_prod_t = 1 - alpha_prod_t
-#     beta_prod_t_prev = 1 - alpha_prod_t_prev
-#     current_alpha_t = alpha_prod_t / alpha_prod_t_prev
-#     current_beta_t = 1 - current_alpha_t
+    # compute alphas, betas
+    alpha_cumprod = torch.cumprod(alphas, dim=0)
+    alpha_prod_t = alpha_cumprod[t]
+    alpha_prod_t_prev = alpha_cumprod[prev_t] if prev_t >= 0 else torch.tensor(1.0)
+    beta_prod_t = 1 - alpha_prod_t
+    beta_prod_t_prev = 1 - alpha_prod_t_prev
+    current_alpha_t = alpha_prod_t / alpha_prod_t_prev
+    current_beta_t = 1 - current_alpha_t
     
-#     # compute predicted original sample from predicted noise
-#     pred_original_sample = (sample - beta_prod_t ** (0.5) * noise_pred) / alpha_prod_t ** (0.5)
+    # compute predicted original sample from predicted noise
+    pred_original_sample = (sample - beta_prod_t ** (0.5) * noise_pred) / alpha_prod_t ** (0.5)
 
-#     # clip pred_original_sample
-#     # TODO should i be clipping here?
-#     pred_original_sample = pred_original_sample.clamp(-1.0, 1.0)
+    # clip pred_original_sample
+    # TODO should i be clipping here?
+    pred_original_sample = pred_original_sample.clamp(-1.0, 1.0)
     
-#     # compute coefficients for pred_original_sample x_0 and current sample x_t
-#     pred_original_sample_coeff = (alpha_prod_t_prev ** (0.5) * current_beta_t) / beta_prod_t
-#     current_sample_coeff = current_alpha_t ** (0.5) * beta_prod_t_prev / beta_prod_t
+    # compute coefficients for pred_original_sample x_0 and current sample x_t
+    pred_original_sample_coeff = (alpha_prod_t_prev ** (0.5) * current_beta_t) / beta_prod_t
+    current_sample_coeff = current_alpha_t ** (0.5) * beta_prod_t_prev / beta_prod_t
 
-#     # compute predicted previous sample µ_t
-#     pred_prev_sample = pred_original_sample_coeff * pred_original_sample + current_sample_coeff * sample
+    # compute predicted previous sample µ_t
+    pred_prev_sample = pred_original_sample_coeff * pred_original_sample + current_sample_coeff * sample
     
-#     return pred_prev_sample
+    return pred_prev_sample
 
     
 def lean_adjoint(trajectories, obs_cond, alphas, reward_gradient, noise_pred_net, clamp_adjoint, device):
@@ -109,20 +109,15 @@ def lean_adjoint(trajectories, obs_cond, alphas, reward_gradient, noise_pred_net
     
     for k in range(num_diffusion_iters - 2, -1, -1): 
         
-        # define function to help with gradient computation 
-        # def func(sample):
-        #     noise_pred = noise_pred_net(
-        #         sample=sample, # (num_eps * num_policy_evals, pred_horizon, action_dim)
-        #         timestep=k,
-        #         global_cond=obs_cond # (num_eps * num_policy_evals, obs_horizon * obs_dim)
-        #     )
-            
-        #     return remove_noise(noise_pred, k, sample, alphas) - sample 
-        
+        define function to help with gradient computation 
         def func(sample):
-            alpha_cumprod = torch.cumprod(alphas, dim=0)
-            alpha_prod_t = alpha_cumprod[t]
-            alpha_prod_t_prev = alpha_cumprod[prev_t] if prev_t >= 0 else torch.tensor(1.0)
+            noise_pred = noise_pred_net(
+                sample=sample, # (num_eps * num_policy_evals, pred_horizon, action_dim)
+                timestep=k,
+                global_cond=obs_cond # (num_eps * num_policy_evals, obs_horizon * obs_dim)
+            )
+            
+            return remove_noise(noise_pred, k, sample, alphas) - sample 
         
         # compute gradient 
         noised_action_k = trajectories[:, k] # (num_eps * num_policy_evals, pred_horizon, action_dim)
