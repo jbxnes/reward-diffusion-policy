@@ -1,20 +1,36 @@
-# Usage: python train_reward.py --num_epochs 100 --lr 1e-2 --batch_size 256 --reward_diff --action_reward_path ./data/reward/action_reward_data_300inits.npy --seed 42
+import os
 import torch
 import torch.nn as nn
 import numpy as np 
-from tqdm import tqdm
 import argparse
+from tqdm import tqdm
+import wandb
 
 from diffusers.optimization import get_scheduler
+from diffusion_policy.reward_model import RewardModel
 from diffusion_policy.dataset.reward_dataset import RewardDataset
-from diffusion_policy.model.reward import RewardModel
 
 
-def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed):
+def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed, log_wandb=False):
+    """Train the reward model.
+    
+    Given an observation and sequence of pred_horizon actions, the model is trained to predict
+    the reward after exectuting action_horizon actions. 
+    
+    Arguments:
+        num_epochs (int): Number of epochs to train the model.
+        lr (float): Learning rate for the optimizer.
+        batch_size (int): Batch size for training.
+        reward_diff (bool): Whether to use reward difference as the target.
+        action_reward_path (str): Path to the file containing reward data.
+        seed (int): Random seed for reproducibility.
+        log_wandb (bool): Whether to log training results to Weights & Biases.
+    """
     # set seeds
     torch.manual_seed(seed)
     np.random.seed(seed)
     
+    # device
     device = torch.device('cuda')
     
     # load data
@@ -44,11 +60,11 @@ def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed):
         pin_memory=True,
         persistent_workers=True)
     
-    # initialize model 
+    # get reward model 
     reward_model = RewardModel(reward_diff=reward_diff)
     reward_model.to(device)
     
-    # init optimizer
+    # get optimizer
     optimizer = torch.optim.Adam(
         params=reward_model.parameters(),
         lr=lr)
@@ -74,12 +90,16 @@ def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed):
                     obs_actions = obs_actions.to(device)
                     rewards = rewards.to(device)
                     
-                    optimizer.zero_grad()
+                    # predicted rewards
                     pred_rewards = reward_model(obs_actions)
-                    loss = nn.functional.mse_loss(pred_rewards, rewards, reduction='sum')
-                    loss.backward()
                     
+                    # L2 loss
+                    loss = nn.functional.mse_loss(pred_rewards, rewards, reduction='sum')
+                    
+                    # optimize 
+                    loss.backward()
                     optimizer.step()
+                    optimizer.zero_grad()
                     lr_scheduler.step()
                     
                     loss_cpu = loss.item()
@@ -102,8 +122,10 @@ def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed):
                     rewards = rewards.to(device)
                     
                     with torch.no_grad():
+                        # predicted rewards
                         pred_rewards = reward_model(obs_actions)
                         
+                        # L2 loss 
                         loss = nn.functional.mse_loss(pred_rewards, rewards, reduction='sum')
                         
                         loss_cpu = loss.item()
@@ -116,15 +138,20 @@ def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed):
             print(f"\nTEST LOSS | EPOCH {epoch_idx}: {avg_test_loss}\n")
             
             # log results
-            wandb.log({'train_loss': avg_train_loss,
-                       'test_loss': avg_test_loss,
-                       'epoch': epoch_idx,
-                       'inital_lr': lr,
-                       'reward_difference': int(reward_diff)})
+            if log_wandb:
+                wandb.log({'train_loss': avg_train_loss,
+                        'test_loss': avg_test_loss,
+                        'epoch': epoch_idx,
+                        'inital_lr': lr,
+                        'reward_difference': int(reward_diff)})
             
     # save model 
-    torch.save(reward_model.state_dict(), f'./data/checkpoints/reward_model_kps_rd{int(reward_diff)}_seed{seed}.ckpt')
-            
+    if not os.path.exists('./data/checkpoints'):
+        os.makedirs('./data/checkpoints')
+        
+    torch.save(reward_model.state_dict(), f'./data/checkpoints/reward_model_rd{int(reward_diff)}_seed{seed}.ckpt')
+    print(f"MODEL SAVED TO ./data/checkpoints/reward_model_rd{int(reward_diff)}_seed{seed}.ckpt")
+    
             
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -133,11 +160,11 @@ if __name__ == "__main__":
     parser.add_argument('--lr', default=1e-2, type=float)
     parser.add_argument('--batch_size', default=256, type=int)
     parser.add_argument('--reward_diff', action='store_true')
-    parser.add_argument('--action_reward_path', default='./data/reward/action_reward_data_300inits.npy', type=str)
+    parser.add_argument('--action_reward_path', default='./data/reward/action_reward_data_300eps.npy', type=str)
     parser.add_argument('--seed', default=42, type=int)
     parsed_args = parser.parse_args()
     
-    import wandb
+    
     wandb.init(project="reward_model_training", config=vars(parsed_args)) 
     
     train(num_epochs=parsed_args.num_epochs,
@@ -145,4 +172,5 @@ if __name__ == "__main__":
           batch_size=parsed_args.batch_size,
           reward_diff=parsed_args.reward_diff,
           action_reward_path=parsed_args.action_reward_path,
-          seed=parsed_args.seed)
+          seed=parsed_args.seed,
+          log_wandb=True)

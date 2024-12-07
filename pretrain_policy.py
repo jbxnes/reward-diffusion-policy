@@ -1,17 +1,32 @@
-# Usage: python pretrain_policy.py --dataset_path ./data/pusht/pusht_cchi_v7_replay.zarr --seed 42 --save_model
-
-from tqdm import tqdm
+import os
 import torch
 import torch.nn as nn 
 import numpy as np 
 import argparse
+from tqdm import tqdm
+import wandb
 
 from diffusers.optimization import get_scheduler
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
-from diffusion_policy.model.diffusion.conditional_unet1d import ConditionalUnet1D
+from diffusion_policy.diffusion.conditional_unet1d import ConditionalUnet1D
 from diffusion_policy.dataset.pusht_dataset import PushTDataset
 
-def train(dataset_path, seed):
+
+def train(dataset_path, seed, log_wandb=False):
+    """Pre-train the noise prediction model. The model is trained to replicate the behavior 
+    demonstrated in expert demonstrations using behaviour cloning. 
+    
+    The policy resulting from the noise prediction model is designed to predict a sequence 
+    of prediction_horizon actions, given a sequence of obs_horizon observations. 
+    
+    The observations used are 9D keypoints obtained from the ground truth pose of the T block, 
+    with proprioception for end effector location. 
+    
+    Arguements:
+        dataset_path (str): Path to the file containing expert demonstration data.
+        seed (int): Random seed for reproducibility. 
+        log_wandb (bool): Whether to log training results to Weights & Biases.   
+    """
     # set seeds
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -80,7 +95,6 @@ def train(dataset_path, seed):
             # batch loop
             with tqdm(dataloader, desc='Batch', leave=False) as tepoch:
                 for nbatch in tepoch:
-                    # data normalized in dataset
                     # device transfer
                     nobs = nbatch['obs'].to(device)
                     naction = nbatch['action'].to(device)
@@ -124,12 +138,17 @@ def train(dataset_path, seed):
             
             # log results 
             epoch_avg_loss = epoch_loss / n_samples
-            wandb.log({'epoch_loss': epoch_avg_loss})
+            if log_wandb
+                wandb.log({'train_loss': epoch_avg_loss,
+                        'epoch': epoch_idx})
             tglobal.set_postfix(loss=epoch_avg_loss)
 
-    if save_model:
-        torch.save(noise_pred_net.state_dict(), f'./data/checkpoints/policy_kps_pretrained_seed{seed}.ckpt')
-        print('Model saved.')
+    # save_model
+    if not os.path.exists('./data/checkpoints'):
+        os.makedirs('./data/checkpoints')
+    
+    torch.save(noise_pred_net.state_dict(), f'./data/checkpoints/policy_pretrained_seed{seed}.ckpt')
+    print(f"MODEL SAVED TO ./data/checkpoints/policy_pretrained_seed{seed}.ckpt")
         
         
 if __name__ == "__main__":
@@ -139,10 +158,10 @@ if __name__ == "__main__":
     parser.add_argument('--seed', default=42, type=int)
     parsed_args = parser.parse_args()
     
-    import wandb
     wandb.init(project="diffusion_policy_pretraining", config=vars(parsed_args)) 
     
     # experiment inputs
     train(dataset_path=parsed_args.dataset_path,
-          seed=parsed_args.seed)
+          seed=parsed_args.seed,
+          log_wandb=True)
     
