@@ -2,9 +2,8 @@ from typing import Union
 import torch
 import torch.nn as nn
 
-from diffusion_policy.model.diffusion.conv1d_components import (
-    Downsample1d, Upsample1d, Conv1dBlock)
-from diffusion_policy.model.diffusion.positional_embedding import SinusoidalPosEmb
+from diffusion_policy.diffusion.conv1d_components import Downsample1d, Upsample1d, Conv1dBlock
+from diffusion_policy.diffusion.positional_embedding import SinusoidalPosEmb
 
 
 class ConditionalResidualBlock1D(nn.Module):
