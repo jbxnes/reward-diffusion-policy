@@ -14,20 +14,19 @@ from diffusion_policy.environment.pusht_env import PushTEnv
 from diffusion_policy.dataset.normalization import normalize_data, unnormalize_data
 
 
-def evaluate(num_eps, model_path, save_vids, seed, log_wandb=False):
+def evaluate(num_eps, model_path, save_vids, log_wandb=False):
     """Evaluate the policy on num_eps unseen environment initializations.
     
     Arguements: 
         num_eps (int): Number of environment initializations to evaluate the policy on.
         model_path (str): Path to the pre-trained noise prediction model.
         save_vids (bool): Whether to save videos of the evaluation.
-        seed (int): Random seed for reproducibility.
         log_wandb (bool): Whether to log results to Weights & Biases.
     """
     
-    # set seeds
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    # set seed
+    torch.manual_seed(42)
+    np.random.seed(42)
     
     # define variables
     pred_horizon = 16
@@ -186,9 +185,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--num_eps', default=50, type=int)
-    parser.add_argument('--model_path', default='./data/checkpoints/policy_pretrained_seed42.ckpt', type=str)
+    parser.add_argument('--model_path', default='./data/checkpoints/policy_pretrained.ckpt', type=str)
     parser.add_argument('--save_vids', action='store_true')
-    parser.add_argument('--seed', default=42, type=int)
     parsed_args = parser.parse_args()
     
     wandb.init(project="evaluate_policy", config=vars(parsed_args))
@@ -197,4 +195,4 @@ if __name__ == "__main__":
     evaluate(num_eps=parsed_args.num_eps,
              model_path=parsed_args.model_path,
              save_vids=parsed_args.save_vids,
-             seed=parsed_args.seed)
+             log_wandb=True)

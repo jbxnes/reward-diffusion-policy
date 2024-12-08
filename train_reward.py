@@ -11,7 +11,7 @@ from diffusion_policy.reward_model import RewardModel
 from diffusion_policy.dataset.reward_dataset import RewardDataset
 
 
-def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed, log_wandb=False):
+def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, log_wandb=False):
     """Train the reward model.
     
     Given an observation and sequence of pred_horizon actions, the model is trained to predict
@@ -23,12 +23,11 @@ def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed, log
         batch_size (int): Batch size for training.
         reward_diff (bool): Whether to use reward difference as the target.
         action_reward_path (str): Path to the file containing reward data.
-        seed (int): Random seed for reproducibility.
         log_wandb (bool): Whether to log training results to Weights & Biases.
     """
     # set seeds
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    torch.manual_seed(42)
+    np.random.seed(42)
     
     # device
     device = torch.device('cuda')
@@ -149,8 +148,8 @@ def train(num_epochs, lr, batch_size, reward_diff, action_reward_path, seed, log
     if not os.path.exists('./data/checkpoints'):
         os.makedirs('./data/checkpoints')
         
-    torch.save(reward_model.state_dict(), f'./data/checkpoints/reward_model_rd{int(reward_diff)}_seed{seed}.ckpt')
-    print(f"MODEL SAVED TO ./data/checkpoints/reward_model_rd{int(reward_diff)}_seed{seed}.ckpt")
+    torch.save(reward_model.state_dict(), f'./data/checkpoints/reward_model_rd{int(reward_diff)}.ckpt')
+    print(f"MODEL SAVED TO ./data/checkpoints/reward_model_rd{int(reward_diff)}.ckpt")
     
             
 if __name__ == "__main__":
@@ -161,7 +160,6 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=256, type=int)
     parser.add_argument('--reward_diff', action='store_true')
     parser.add_argument('--action_reward_path', default='./data/reward/action_reward_data_300eps.npy', type=str)
-    parser.add_argument('--seed', default=42, type=int)
     parsed_args = parser.parse_args()
     
     
@@ -172,5 +170,4 @@ if __name__ == "__main__":
           batch_size=parsed_args.batch_size,
           reward_diff=parsed_args.reward_diff,
           action_reward_path=parsed_args.action_reward_path,
-          seed=parsed_args.seed,
           log_wandb=True)

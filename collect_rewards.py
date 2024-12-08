@@ -13,7 +13,7 @@ from diffusion_policy.environment.pusht_env import PushTEnv
 from diffusion_policy.dataset.normalization import normalize_data, unnormalize_data
 
 
-def collect_rewards(num_eps, model_path, seed):
+def collect_rewards(num_eps, model_path):
     """Collect synthetic data for reward model training by running the pre-trained policy
     for num_eps episodes. 
     
@@ -26,11 +26,10 @@ def collect_rewards(num_eps, model_path, seed):
     Arguements:
         num_eps (int): Number of episodes to run the policy for.
         model_path (str): Path to the pre-trained policy.
-        seed (int): Random seed for reproducibility.
     """
     # set seeds
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    torch.manual_seed(42)
+    np.random.seed(42)
     
     # define variables
     pred_horizon = 16
@@ -176,11 +175,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--num_eps', default=300, type=int)
-    parser.add_argument('--model_path', default='./data/checkpoints/policy_pretrained_seed42.ckpt', type=str)
-    parser.add_argument('--seed', default=42, type=int)
+    parser.add_argument('--model_path', default='./data/checkpoints/policy_pretrained.ckpt', type=str)
     parsed_args = parser.parse_args()
     
     # experiment inputs
     collect_rewards(num_eps=parsed_args.num_eps,
-                    model_path=parsed_args.model_path, 
-                    seed=parsed_args.seed)
+                    model_path=parsed_args.model_path)
