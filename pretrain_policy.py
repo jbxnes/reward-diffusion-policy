@@ -137,7 +137,7 @@ def train(dataset_path, log_wandb=False):
             
             # log results 
             epoch_avg_loss = epoch_loss / n_samples
-            if log_wandb
+            if log_wandb:
                 wandb.log({'train_loss': epoch_avg_loss,
                         'epoch': epoch_idx})
             tglobal.set_postfix(loss=epoch_avg_loss)
@@ -147,7 +147,7 @@ def train(dataset_path, log_wandb=False):
         os.makedirs('./data/checkpoints')
     
     torch.save(noise_pred_net.state_dict(), f'./data/checkpoints/policy_pretrained.ckpt')
-    print(f"MODEL SAVED TO ./data/checkpoints/policy_pretrained.ckpt")
+    print("MODEL SAVED TO ./data/checkpoints/policy_pretrained.ckpt")
         
         
 if __name__ == "__main__":

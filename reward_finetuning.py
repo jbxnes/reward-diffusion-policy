@@ -264,7 +264,8 @@ def adjoint_matching(num_ft_iters, num_eps, warmup_steps, lr, reward_diff, noise
     if not os.path.exists('./data/checkpoints'):
         os.makedirs('./data/checkpoints')
         
-    torch.save(noise_pred_net_ft.state_dict(), f'./data/checkpoints/policy_finetuned_warmup{warmup_steps}_rd{int(reward_diff)}_clip{int(clip_adjoint)}.ckpt')
+    torch.save(noise_pred_net_ft.state_dict(), f'./data/checkpoints/policy_finetuned_rd{int(reward_diff)}.ckpt')
+    print(f"MODEL SAVED TO ./data/checkpoints/policy_finetuned_rd{int(reward_diff)}.ckpt")
     
     
 if __name__ == "__main__":
@@ -280,8 +281,6 @@ if __name__ == "__main__":
     parser.add_argument('--action_reward_path', default='./data/reward/action_reward_data_300eps.npy', type=str)
     parser.add_argument('--clip_adjoint', action='store_true')
     parsed_args = parser.parse_args()
-    
-    print(parsed_args.reward_diff)
     
     wandb.init(project="reward_finetuning", config=vars(parsed_args))
     

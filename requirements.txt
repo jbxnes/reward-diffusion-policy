@@ -1,0 +1,12 @@
+diffusers
+gym
+numpy
+opencv-python
+pygame
+pymunk
+scikit-video
+scikit-image
+shapely
+torch
+tqdm
+zarr

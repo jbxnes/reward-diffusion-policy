@@ -5,7 +5,18 @@ from diffusion_policy.dataset.normalization import get_data_stats, normalize_dat
 
 
 class RewardDataset(torch.utils.data.Dataset):
+    """Dataset for reward model training. 
+    
+    The dataset is created by rolling out the pre-trained policy on unseen environment instances. 
+    """
     def __init__(self, action_reward_path, train=True, reward_diff=True):
+        """Initialize the dataset.
+        
+        Arguments:
+            action_reward_path (str): Path to the numpy array containing the action and reward data.
+            train (bool): If True, return the training subset of the data, else return the test subset.
+            reward_diff (bool): Whether to use reward difference as the target.
+        """
         
         # load data
         action_reward_data = np.load(action_reward_path)
