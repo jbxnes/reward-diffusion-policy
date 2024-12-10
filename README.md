@@ -23,7 +23,7 @@ mkdir data
 Download the dataset from [https://diffusion-policy.cs.columbia.edu/data/training/](https://diffusion-policy.cs.columbia.edu/data/training/) and extract it:
 ```console
 wget https://diffusion-policy.cs.columbia.edu/data/training/pusht.zip -O ./data/pusht.zip
-unzip ./data/pusht.zip -d ./data2  && rm -f ./data/pusht.zip
+unzip ./data/pusht.zip -d ./data  && rm -f ./data/pusht.zip
 ```
 
 ### Weights & Biases
