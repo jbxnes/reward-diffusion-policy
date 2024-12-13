@@ -58,6 +58,7 @@ def evaluate(num_eps, model_path, save_vids, log_wandb=False):
     state_dict = torch.load(model_path, map_location='cuda')
     noise_pred_net.load_state_dict(state_dict)
     noise_pred_net.to(device)
+    noise_pred_net.eval()
     
     # get noise scheduler and alphas 
     noise_scheduler = DDPMScheduler(
@@ -180,6 +181,7 @@ def evaluate(num_eps, model_path, save_vids, log_wandb=False):
                  
     print('AVERAGE COVERAGE:', np.mean(max_rewards))
     print('AVERAGE REWARD:', np.mean(max_dense_rewards))
+    return np.mean(max_rewards), np.mean(max_dense_rewards)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

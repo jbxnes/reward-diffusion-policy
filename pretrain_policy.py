@@ -10,6 +10,7 @@ from diffusers.optimization import get_scheduler
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusion_policy.diffusion.conditional_unet1d import ConditionalUnet1D
 from diffusion_policy.dataset.pusht_dataset import PushTDataset
+from evaluate_policy import evaluate
 
 
 def train(dataset_path, log_wandb=False):
@@ -37,7 +38,8 @@ def train(dataset_path, log_wandb=False):
     obs_dim = 20
     action_dim = 2
     
-    num_epochs = 100
+    num_epochs = 300
+    eval_every = 30
     num_diffusion_iters = 100
     
     device = torch.device('cuda')
@@ -84,6 +86,9 @@ def train(dataset_path, log_wandb=False):
         num_warmup_steps=500,
         num_training_steps=len(dataloader) * num_epochs
     )
+    
+    if not os.path.exists('./data/checkpoints'):
+        os.makedirs('./data/checkpoints')
     
     # training 
     with tqdm(range(num_epochs), desc='Epoch') as tglobal:
@@ -139,13 +144,22 @@ def train(dataset_path, log_wandb=False):
             epoch_avg_loss = epoch_loss / n_samples
             if log_wandb:
                 wandb.log({'train_loss': epoch_avg_loss,
-                        'epoch': epoch_idx})
+                           'epoch': epoch_idx})
             tglobal.set_postfix(loss=epoch_avg_loss)
 
+            if epoch_idx % eval_every == 0:
+                torch.save(noise_pred_net.state_dict(), f'./data/checkpoints/policy_pretrained_ep{epoch_idx}.ckpt')
+                avg_coverage, avg_reward = evaluate(num_eps=50, 
+                                                    model_path=f'./data/checkpoints/policy_pretrained_ep{epoch_idx}.ckpt',
+                                                    save_vids=False)
+                if log_wandb:
+                    wandb.log({'test_avg_coverage': avg_coverage,
+                               'test_avg_reward': avg_reward,
+                               'eval_step': epoch_idx // eval_every,
+                               'eval_every': eval_every,
+                               'num_eps': 50})
+                    
     # save_model
-    if not os.path.exists('./data/checkpoints'):
-        os.makedirs('./data/checkpoints')
-    
     torch.save(noise_pred_net.state_dict(), f'./data/checkpoints/policy_pretrained.ckpt')
     print("MODEL SAVED TO ./data/checkpoints/policy_pretrained.ckpt")
         
